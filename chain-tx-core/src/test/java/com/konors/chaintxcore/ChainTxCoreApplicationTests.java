@@ -4,7 +4,6 @@ import com.konors.chaintxcore.support.WorkflowContext;
 import com.konors.chaintxcore.support.WorkflowEngine;
 import lombok.Data;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -14,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@SpringBootTest
+//@SpringBootTest
 class ChainTxCoreApplicationTests {
 
     // --- 模拟的源数据 DTO ---
