@@ -1,14 +1,13 @@
 package com.konors.chaintxcore;
 
+import com.konors.chaintxcore.assembler.DataAssembler;
 import com.konors.chaintxcore.support.WorkflowContext;
 import com.konors.chaintxcore.support.WorkflowEngine;
 import lombok.Data;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -240,6 +239,150 @@ class ChainTxCoreApplicationTests {
 //                    )
 //                    .get();
 //        });
+    }
+
+    // 原始数据模型
+    record User(int id, String name, String city) {}
+    record Order(int orderId, int userId, int productId, double amount) {}
+    record Product(int pid, String productName) {}
+
+    // 中间组装结果模型
+    record UserOrder(User user, Order order) {}
+
+    // 最终组装结果模型
+    record FullOrderInfo(int userId, String userName, String city, int orderId, double amount, String productName) {
+        @Override
+        public String toString() {
+            return String.format(
+                    "FullOrderInfo[user=%s(%d), city=%s, orderId=%d, product=%s, amount=%.2f]",
+                    userName, userId, city, orderId, productName, amount
+            );
+        }
+    }
+
+    @Test
+    void testAssembler() {
+        // 1. 准备原始数据
+        List<User> users = Arrays.asList(
+                new User(1, "Alice", "New York"),
+                new User(2, "Bob", "London"),
+                new User(3, "Charlie", "Paris") // 该用户没有订单
+        );
+
+        List<Order> orders = Arrays.asList(
+                new Order(101, 1, 10, 150.0),
+                new Order(102, 2, 20, 200.0),
+                new Order(103, 1, 20, 220.0)
+        );
+
+        List<Product> products = Arrays.asList(
+                new Product(10, "Laptop"),
+                new Product(20, "Mouse"),
+                new Product(30, "Keyboard") // 该产品没有被购买
+        );
+
+        System.out.println("--- 泛型链式组装 (INNER JOIN) ---");
+
+        // 2. 使用泛型DataAssembler进行链式组装
+        List<FullOrderInfo> finalData = DataAssembler
+                .source(users) // 返回 DataAssembler<User>
+                .data(orders)  // 返回 PairedDataAssembler<User, Order>
+                .match((user, order) -> user.id() == order.userId())
+                .assemble((user, order) -> new UserOrder(user, order)) // 返回 DataAssembler<UserOrder>
+                .data(products) // 返回 PairedDataAssembler<UserOrder, Product>
+                .match((userOrder, product) -> userOrder.order().productId() == product.pid())
+                .assemble((userOrder, product) -> new FullOrderInfo( // 返回 DataAssembler<FullOrderInfo>
+                        userOrder.user().id(),
+                        userOrder.user().name(),
+                        userOrder.user().city(),
+                        userOrder.order().orderId(),
+                        userOrder.order().amount(),
+                        product.productName()
+                ))
+                .get(); // 返回 List<FullOrderInfo>
+
+        finalData.forEach(System.out::println);
+
+
+        System.out.println("\n--- 泛型链式组装 (LEFT JOIN) ---");
+
+        // 3. 使用 leftAssemble 保留所有用户
+        List<FullOrderInfo> leftJoinData = DataAssembler
+                .source(users) // -> DataAssembler<User>
+                .data(orders)  // -> PairedDataAssembler<User, Order>
+                .match((user, order) -> user.id() == order.userId())
+                //  始终返回统一的中间类型 UserOrder。
+                // 如果没有匹配的订单，则order字段为null。
+                .leftAssemble((user, order) -> new UserOrder(user, order)) // -> DataAssembler<UserOrder>
+
+                .data(products) // -> PairedDataAssembler<UserOrder, Product>
+                // 匹配时，必须先检查中间对象中的order是否存在。
+                .match((userOrder, product) ->
+                        userOrder.order() != null && // 关键检查！
+                                userOrder.order().productId() == product.pid()
+                )
+                //在最终组装时，处理所有可能的情况。
+                .leftAssemble((userOrder, product) -> {
+                    User user = userOrder.user();
+                    Order order = userOrder.order();
+
+                    // 情况 A: 用户有订单，且产品信息也找到了
+                    if (order != null && product != null) {
+                        return new FullOrderInfo(
+                                user.id(), user.name(), user.city(),
+                                order.orderId(), order.amount(),
+                                product.productName()
+                        );
+                    }
+                    // 情况 B: 用户有订单，但产品信息未找到 (product is null)
+                    else if (order != null) {
+                        return new FullOrderInfo(
+                                user.id(), user.name(), user.city(),
+                                order.orderId(), order.amount(),
+                                "Product Not Found" // 或者 null, 或其他标记
+                        );
+                    }
+                    // 情况 C: 用户没有订单 (order is null, product will also be null)
+                    else {
+                        return new FullOrderInfo(
+                                user.id(), user.name(), user.city(),
+                                0, 0.0, "N/A"
+                        );
+                    }
+                }) // -> DataAssembler<FullOrderInfo>
+                .get(); // -> List<FullOrderInfo>
+
+        leftJoinData.forEach(System.out::println);
+
+        System.out.println("--- 高性能组装 (matchOn) 演示 ---");
+
+        List<FullOrderInfo> result = DataAssembler
+                .source(users)
+                .data(orders)
+                // 使用高性能的 matchOn 方法
+                .matchOn(User::id, Order::userId)
+                .leftAssemble((user, order) -> new UserOrder(user, order))
+
+                .data(products)
+                .matchOn(
+                        userOrder -> userOrder.order() != null ? userOrder.order().productId() : null,
+                        Product::pid
+                )
+                .leftAssemble((userOrder, product) -> {
+                    User user = userOrder.user();
+                    Order order = userOrder.order();
+                    if (order != null && product != null) {
+                        return new FullOrderInfo(user.id(), user.name(), user.city(), order.orderId(), order.amount(), product.productName());
+                    } else if (order != null) {
+                        return new FullOrderInfo(user.id(), user.name(), user.city(), order.orderId(), order.amount(), "Product Not Found");
+                    } else {
+                        return new FullOrderInfo(user.id(), user.name(), user.city(), 0, 0.0, "N/A");
+                    }
+                })
+                .sorted(Comparator.comparing(FullOrderInfo::userName))
+                .get();
+
+        result.forEach(System.out::println);
     }
 
 }
