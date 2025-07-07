@@ -205,4 +205,41 @@ class ChainTxCoreApplicationTests {
         System.out.println("\nWorkflow finished successfully!");
     }
 
+    @Test
+    void testFluent() {
+//        AsyncDataFetcher fetcher = new AsyncDataFetcher(executor);
+
+//        DataKey<Map<String, User>> authorMapKey = fetcher.register("authorMap", () -> userService.findUserMapByIds(authorIds));
+//        DataKey<Map<String, List<LikeUserDto>>> likeMapKey = fetcher.register("likeMap", () -> likeService.findLikeUsersMapByVideoIds(videoIds));
+//        DataKey<Map<String, Long>> attachmentCountKey = fetcher.register("attachmentCount", () -> attachmentService.countAttachmentsByVideoIds(videoIds));
+//
+//        // --- 阶段二：执行并组装 ---
+//        return fetcher.executeAndAssemble(videos, (video, data) -> {
+//            // 在这个Lambda中，所有数据都已准备好，可以通过 key 安全获取
+//            Map<String, User> authorMap = data.get(authorMapKey);
+//            Map<String, List<LikeUserDto>> likeMap = data.get(likeMapKey);
+//            Map<String, Long> attachmentCountMap = data.get(attachmentCountKey);
+//
+//            // 使用 FluentAssembler 进行组装
+//            return FluentAssembler.from(video, VideoVo::new)
+//                    .copyProperties() // 复制 id, title
+//                    .set(VideoVo::setThumbnailUrl, () -> CDN_BASE_URL + video.getThumbnailPath())
+//                    .set(VideoVo::setAuthorName, () ->
+//                            Optional.ofNullable(authorMap.get(video.getAuthorId()))
+//                                    .map(User::getRealname)
+//                                    .orElse("Unknown Author")
+//                    )
+//                    .set(VideoVo::setLikeUsers, () ->
+//                            likeMap.getOrDefault(video.getId(), Collections.emptyList())
+//                    )
+//                    .set(VideoVo::setLikeCount, () ->
+//                            likeMap.getOrDefault(video.getId(), Collections.emptyList()).size()
+//                    )
+//                    .set(VideoVo::setAttachmentCount, () ->
+//                            attachmentCountMap.getOrDefault(video.getId(), 0L)
+//                    )
+//                    .get();
+//        });
+    }
+
 }
