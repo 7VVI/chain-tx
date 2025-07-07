@@ -1,11 +1,10 @@
-# chain-tx
-# WorkflowEngine: 声明式事务性工作流引擎
+# Chain-tx: 声明式事务性工作流引擎
 
 ![Java](https://img.shields.io/badge/Java-17+-orange.svg)
 ![Spring](https://img.shields.io/badge/Spring-Framework-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
-**WorkflowEngine** 是一个轻量级、通用的Java工作流框架，旨在将复杂、易错的批量数据导入和处理逻辑，转化为简洁、可维护的声明式代码。它彻底解决了在处理具有复杂依赖关系的实体时，手动管理状态、持久化顺序和外键ID回填的痛点。
+*Chain-tx** 是一个轻量级、通用的Java工作流框架，旨在将复杂、易错的批量数据导入和处理逻辑，转化为简洁、可维护的声明式代码。它彻底解决了在处理具有复杂依赖关系的实体时，手动管理状态、持久化顺序和外键ID回填的痛点。
 
 ## 痛点：那个熟悉的“数据导入”噩梦
 
